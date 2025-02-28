@@ -1,4 +1,5 @@
-# SUCP
+# SUCPlus
+
 ## Leveraging Social Influence based on Users Activity Centers for Point-of-Interest Recommendation (Information Processing & Management Journal_2022)
 
 
