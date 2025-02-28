@@ -24,3 +24,4 @@ This repository contains the implementation of Leveraging Social Influence based
 
 # Contact
 If you have any questions, do not hesitate to contact us at 'kosar.seyedhosseinzadeh@gmail.com' or   'mohammad.aliannejadi@gmail.com', we will be happy to assist.
+# SUCP-

@@ -1,4 +1,5 @@
-import numpy as np
+# import numpy as np
+# import pandas as pd
 import time
 import scipy.sparse as sparse
 from collections import defaultdict
@@ -11,13 +12,7 @@ from lib.FriendBasedCF import FriendBasedCF
 from lib.metrics import precisionk, recallk, ndcgk, mapk
 from lib.LocationFriendshipBookmarkColoringAlgorithm import LocationFriendshipBookmarkColoringAlgorithm
 from lib.LFBCA_optimize import LFBCA_optimize
-from lib.CategoryBasedALS import MatrixFactorization
-import pandas as pd
-# Lior Added
-# ----------------------------------------------------------------------
-# from lib.UserCategoryModel import UserCategoryModel  # Import the new model
-# from lib.UserCategoryModelMF import UserCategoryModelMF  # Import the UCM with MF
-# ----------------------------------------------------------------------
+# from lib.CategoryBasedALS import MatrixFactorizationALS
 
 def read_friend_data():
     social_data = open(social_file, 'r').readlines()
@@ -112,7 +107,8 @@ def read_ground_truth():
     return ground_truth
 
 
-def main(result_dir_name, tmp_dir_name, train_df, category_df): #added result_dir_name, tmp_dir_name
+def main(result_dir_name, tmp_dir_name): #added result_dir_name, tmp_dir_name
+
     sparse_training_matrices, sparse_training_matrix, sparse_training_matrix_WT, sparse_training_matrix_LT, training_tuples, training_matrix = read_training_data()
     ground_truth = read_ground_truth()
     training_matrix2 = read_training_data2()
@@ -122,43 +118,11 @@ def main(result_dir_name, tmp_dir_name, train_df, category_df): #added result_di
 
     start_time = time.time()
 
-    PFM.train(sparse_training_matrix, max_iters=15, learning_rate=1e-4)
+    PFM.train(sparse_training_matrix, max_iters=10, learning_rate=1e-4)
     if not os.path.exists("./tmp2/"): #added create tmp directory
         os.makedirs("./tmp2/")
     PFM.save_model("./tmp2/")
     PFM.load_model("./tmp2/")
-
-# Lior Added - UserCategoryModel
-# ----------------------------------------------------------------------
-#     # Initialize the User-Category Model
-#     train_file = "C:\project_RS\Dataset\Yelp\Yelp_train.txt"
-#     poi_category_file = "C:\project_RS\Dataset\Yelp\Yelp_poi_categories.txt"
-#     output_user_category_file = "C:\project_RS\Dataset\Yelp\user_category_freq.txt"
-#
-#     UCM = UserCategoryModel(train_file, poi_category_file, output_user_category_file)
-#
-#     if not os.path.exists(output_user_category_file):
-#         UCM.create_user_category_matrix()
-#     UCM.load_user_category_data()
-    # train_file = "C:\project_RS\Dataset\Yelp\Yelp_train.txt"
-    # poi_category_file = "C:\project_RS\Dataset\Yelp\Yelp_poi_categories.txt"
-    # output_user_category_file = "C:\project_RS\Dataset\Yelp\user_category_freq.txt"
-
-    # UCM_MF = UserCategoryModelMF(train_file, poi_category_file, output_user_category_file, K=30, alpha=20.0, beta=0.2)
-
-    # if not os.path.exists(output_user_category_file):
-    #     print("Creating User-Category matrix...")
-    #     UCM_MF.create_user_category_matrix()
-
-    # # Train the User-Category MF model
-    # print("\nTraining User-Category MF model...")
-    # UCM_MF.train(max_iters=40, learning_rate=1e-5)
-
-    # # Save trained model
-    # UCM_MF.save_model("./tmp2/")
-    # UCM_MF.load_model("./tmp2/")
-# ----------------------------------------------------------------------
-
 
     ctime = time.time()
 
@@ -169,16 +133,30 @@ def main(result_dir_name, tmp_dir_name, train_df, category_df): #added result_di
 
     print("MGM Done. Elapsed time:", time.time() - ctime, "s")
 
+    print(sparse_training_matrices)
+    print('start training TAMF')
     TAMF.train(sparse_training_matrices, tmp_dir_name, max_iters=30, load_sigma=False) #added tmp_dir_name
     TAMF.save_model("./tmp2/")
     TAMF.load_model("./tmp2/")
-   
+    print('Finish training TAMF')
 
-    MF = MatrixFactorization()
-    MF.fit(train_df, category_df)
+    train_df = pd.read_csv('/Users/tamar/Desktop/Uni/Rec Sys/project_RS/Dataset/Yelp/Yelp_train.txt',  sep="\t", header =None)
+    train_df.columns = ["uid", "lid", "freq"]    
+    category_df = pd.read_csv('/Users/tamar/Desktop/Uni/Rec Sys/project_RS/Dataset/Yelp/Yelp_poi_categories.txt',  sep="\t", header =None)
+    category_df.columns = ["lid", "category"]
 
-    # Lior Added - centrality_type='degree'
-    LFBCA.precompute_rec_scores(training_matrix2, social_matrix, centrality_type='betweenness')
+    # MF = MatrixFactorizationALS()
+    # MF.fit(train_df, category_df)
+
+    # test_df = pd.read_csv("/Users/tamar/Desktop/Uni/Rec Sys/project_RS/Dataset/Yelp/Yelp_test.txt",  sep="\t", header =None)  # uid, lid, freq (or relevant columns)
+    # test_df.columns = ["uid", "lid", "freq"]    
+    # prec_10, rec_10 = MF.evaluate_precision_recall(test_df, k=10)
+    # print(f"Precision@10: {prec_10:.4f}")
+    # print(f"Recall@10: {rec_10:.4f}")
+
+    # Lior Added - centrality_type='eigenvector'
+    LFBCA.precompute_rec_scores(training_matrix2, social_matrix)
+    # , centrality_type='eigenvector')
     LFBCA.save_result("./tmp2/")
 
     # S.compute_friend_sim(social_relations, training_matrix)
@@ -201,7 +179,7 @@ def main(result_dir_name, tmp_dir_name, train_df, category_df): #added result_di
 
     all_uids = list(range(user_num))
     all_lids = list(range(poi_num))
-    np.random.shuffle(all_uids)
+    # np.random.shuffle(all_uids)
 
     # list for different ks
     precision_5, recall_5, nDCG_5, MAP_5 = [], [], [], []
@@ -211,15 +189,14 @@ def main(result_dir_name, tmp_dir_name, train_df, category_df): #added result_di
 
     for cnt, uid in enumerate(all_uids):
         if uid in ground_truth:
-            # What is the meaning of the following structure?
-            # overall_scores = [(0.5*UCM_MF.predict(uid, lid) + 0.5*PFM.predict(uid, lid)) * (MGMWT.predict(uid, lid) + MGMLT.predict(uid, lid)) * TAMF.predict(uid, lid) * LFBCA.predict(uid, lid)
-            #overall_scores = [UCM.predict(uid, lid) * PFM.predict(uid, lid) * (MGMWT.predict(uid, lid) + MGMLT.predict(uid, lid)) * TAMF.predict(uid, lid) * LFBCA.predict(uid, lid)
-            overall_scores = [(0.5*PFM.predict(uid, lid) + 0.5*MF.predict(uid, lid)) * (MGMWT.predict(uid, lid) + MGMLT.predict(uid, lid)) * TAMF.predict(uid, lid) * LFBCA.predict(uid, lid) 
+            overall_scores = [
+                PFM.predict(uid, lid) * (MGMWT.predict(uid, lid) + MGMLT.predict(uid, lid)) *  TAMF.predict(uid, lid) * 
+                  LFBCA.predict(uid, lid) 
+                #   * MF.predict(uid, lid)
                               if (uid, lid) not in training_tuples else -1
                               for lid in all_lids]
 
             overall_scores = np.array(overall_scores)
-
             predicted = list(reversed(overall_scores.argsort()))[:top_k]
             actual = ground_truth[uid]
 
@@ -262,8 +239,11 @@ def main(result_dir_name, tmp_dir_name, train_df, category_df): #added result_di
 
 
 if __name__ == '__main__':
-    data_name = sys.argv[1]  # which data to run
-    beta_value = sys.argv[2]  # which beta value to use
+    # data_name = sys.argv[1]  # which data to run
+    # beta_value = sys.argv[2]  # which beta value to use
+    data_name = 'yelp'
+    beta_value = 0.8
+
 
     print("======= RUNNING FOR BETA = ", beta_value, ", DATASET = ", data_name, "========")
 
@@ -288,6 +268,8 @@ if __name__ == '__main__':
         poi_file = data_dir + "Yelp_poi_coos.txt"
         social_file = data_dir + "Yelp_social_relations.txt"
 
+        
+
     user_num, poi_num = open(size_file, 'r').readlines()[0].strip('\n').split()
     user_num, poi_num = int(user_num), int(poi_num)
 
@@ -297,20 +279,15 @@ if __name__ == '__main__':
     MGMWT = MultiGaussianModel(alpha=0.2, theta=0.02, dmax=15)
     MGMLT = MultiGaussianModel(alpha=0.2, theta=0.02, dmax=15)
     TAMF = TimeAwareMF(K=100, Lambda=1.0, beta=2.0, alpha=2.0, T=24)
+
     # Lior Added - LFBCA_optimize
     # ----------------------------------------------------------------------
-    LFBCA = LFBCA_optimize(alpha=0.85, beta=float(beta_value), epsilon=0.001)
+    # LFBCA = LFBCA_optimize(alpha=0.85, beta=float(beta_value), epsilon=0.001)
     # ----------------------------------------------------------------------
-    # LFBCA = LocationFriendshipBookmarkColoringAlgorithm(alpha=0.85, beta=float(beta_value), epsilon=0.001)
+    LFBCA = LocationFriendshipBookmarkColoringAlgorithm(alpha=0.85, beta=float(beta_value), epsilon=0.001)
 
     tmp_dir_name = "./tmp2_{}_{}/".format(data_name, beta_value)
     result_dir_name = "./result2_{}_{}/".format(data_name, beta_value)
-
-    train_df = pd.read_csv(f'{data_dir}Yelp_train.txt',  sep="\t", header =None)
-    train_df.columns = ["uid", "lid", "freq"]    
-    category_df = pd.read_csv(f'{data_dir}Yelp_poi_categories.txt',  sep="\t", header =None)
-    category_df.columns = ["lid", "category"]
-
     try:
         os.makedirs(tmp_dir_name)
     except OSError as e:
@@ -321,4 +298,4 @@ if __name__ == '__main__':
     except OSError as e:
         pass
 
-    main(result_dir_name, tmp_dir_name, train_df, category_df)
+    main(result_dir_name, tmp_dir_name)

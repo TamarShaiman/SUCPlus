@@ -4,6 +4,13 @@
 .idea/vcs.xml
 .idea/inspectionProfiles/profiles_settings.xml
 .idea/inspectionProfiles/Project_Default.xml
+SUCP/result/
+SUCP/result2/
+SUCP/lib_1
+result.zip
+result2.zip
+venv/
+SUCP/recommendation_tamar.py
 SUCP/slurm-129638_1.out
 SUCP/slurm-129638_10.out
 SUCP/slurm-129638_11.out
